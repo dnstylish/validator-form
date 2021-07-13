@@ -108,4 +108,30 @@ ready(() => {
         }
         // làm dưới đó dưới này...call api,...vì form đúng
     })
+
+
+    /**
+     * show code, ko thuyết trình phần này
+     */
+    document.querySelectorAll('.tab-panel > button').forEach((element) => {
+        element.addEventListener('click', ()=> {
+            if (!element.classList.contains('active')) {
+                const tab = element.getAttribute('for-tab')
+                document.querySelectorAll('.gist-item').forEach((e2) => {
+                    if (e2.getAttribute('tab') === tab) {
+                        e2.classList.add('show')
+                    } else {
+                        e2.classList.remove('show')
+                    }
+                })
+            }
+            document.querySelectorAll('.tab-panel > button').forEach((button)=> {
+                if (button.contains(element)) {
+                    button.classList.add('active')
+                } else {
+                    button.classList.remove('active')
+                }
+            })
+        })
+    })
 })
