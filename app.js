@@ -16,8 +16,7 @@ const rules = {
         },
         {
             max: 10,
-            message: 'Tên quá dài',
-            trigger: 'blur'
+            message: 'Tên quá dài'
         }
     ],
     email: [
@@ -28,8 +27,7 @@ const rules = {
         },
         {
             type: 'email',
-            message: 'Email không hợp lệ',
-            trigger: 'blur'
+            message: 'Email không hợp lệ'
         }
     ]
 }
@@ -46,7 +44,7 @@ ready(() => {
         e.preventDefault()
         const errors = validator.validate()
         if (errors.length) {
-            return console.log('Form lỗi')
+            // return console.log('Form lỗi')
         }
         // làm dưới đó dưới này...call api,...vì form đúng
     })

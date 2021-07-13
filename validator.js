@@ -289,7 +289,7 @@ class Validator {
                 return list.includes(value)
             },
             _regex: (pattern) => {
-                return value.match(pattern)
+                return !value.match(pattern)
             },
             /**
              * Với kiểu min và max
