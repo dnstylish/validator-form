@@ -58,7 +58,9 @@ class Validator {
              * Tìm và gắn và rule có trigger
              * forEach(value, index, array) là api của Array
              */
-            rules.forEach((rule) => {
+            rules.forEach((rule, index) => {
+                // gán index cho rule
+                rule.index = index
                 // kiếm tra xem rule có trigger
                 if (rule.trigger) {
                     // validate feild data chứa attr valid-data
@@ -75,12 +77,12 @@ class Validator {
                          *  Yêu cầu trả về một giá trị đúng sai
                          */
                         if (rule.validate) {
-                            this._addListener(prop, _selector_data, rule.trigger, this._runCustomValidate(rule.validate, _selector_data, rule, prop))
+                            this._addListener(prop, _selector_data, rule, this._runCustomValidate(rule.validate, _selector_data, rule, prop))
                         } else {
                             // nếu ko có custom validate
                             // Dựng callback cho rule
                             const callback = this._buildCallback(prop, _selector_data, rule)
-                            this._addListener(prop, _selector_data, rule.trigger, callback)
+                            this._addListener(prop, _selector_data, rule, callback)
                         }
                     }
                 }
@@ -111,7 +113,9 @@ class Validator {
              * forEach(value, index, array) là api của Array
              * Xử lý với toàn bộ rule
              */
-            rules.forEach((rule) => {
+            rules.forEach((rule, index) => {
+                // gán index cho rule
+                rule.index = index
                 // validate feild data chứa attr valid-data
                 const _selector_data = field.querySelector('[valid-data]')
                 if (!_selector_data) {
@@ -130,13 +134,15 @@ class Validator {
                         const _error = this._runCustomValidate(rule.validate, _selector_data, rule, prop)()
                         if (_error) {
                             _errors.push(_error)
-                            this._errorUI(_error)
+                            this._errorUI(_error, index)
+                        } else {
+                            this._clearErrorUI(prop, index)
                         }
                     } else {
                         const _error = this._buildCallback(prop, _selector_data, rule)()
                         if (_error) {
                             _errors.push(_error)
-                            this._errorUI(_error)
+                            this._errorUI(_error, index)
                         } else {
                             /**
                              * Kiểm tra xem đã có ở field đó hay chứ...VD: password có 2 lỗi
@@ -146,10 +152,7 @@ class Validator {
                              * @type {boolean}
                              * @private
                              */
-                            const _has_error = _errors.findIndex(value => value.prop === prop) > -1
-                            if (!_has_error) {
-                                this._clearErrorUI(prop)
-                            }
+                            this._clearErrorUI(prop, index)
                         }
                     }
                 }
@@ -181,7 +184,7 @@ class Validator {
      * Dựng callback
      * @param prop: tên rule
      * @param selector: field data
-     * @param rule
+     * @param  rule
      * @private
      */
     _buildCallback(prop, selector, rule) {
@@ -206,34 +209,37 @@ class Validator {
                 if (!_value) {
                     _error = this._buildError(rule, `Trường ${prop} là bắt buộc.`, prop)
                 }
-            } else if (rule.enum) {
-                /**
-                 * Trường giá trị phải nằm trong các giá trị được yêu cầu
-                 * rule.enum phải là một mảng
-                 */
-                if (!this._validator(_value)._enum(rule.enum)) {
-                    _error = this._buildError(rule, `Trường này phải nằm trong ${rule.enum.toString()}`, prop)
-                }
-            } else if (rule._regex) {
-                /**
-                 * Kiểm tra định dạng
-                 * Email của thực chất là 1 kiểu định dạng
-                 * Regular Expression: https://viblo.asia/p/regular-expression-nhung-khai-niem-co-ban-jvEla4BoZkw
-                 */
-                if (!this._validator(_value)._regex(rule._regex)) {
-                    _error = this._buildError(rule, `Trường ${prop} không đúng định dạng`, prop)
-                }
-            } else if (rule.min) {
-                if (!this._validator(_value)._min(rule.min)) {
-                    _error = this._buildError(rule, `Trường ${prop} phải lớn hơn ${rule.min}`, prop)
-                }
-            } else if (rule.max) {
-                if (!this._validator(_value)._max(rule.max)) {
-                    _error = this._buildError(rule, `Trường ${prop} phải nhỏ hơn ${rule.max}`, prop)
-                }
-            } else if (rule.type) {
-                if (!this._validator(_value)._type(rule.type)) {
-                    _error = this._buildError(rule, `Trường ${prop} cần phải là ${rule.type}`, prop)
+            }
+            if (_value) {
+                if (rule.enum) {
+                    /**
+                     * Trường giá trị phải nằm trong các giá trị được yêu cầu
+                     * rule.enum phải là một mảng
+                     */
+                    if (!this._validator(_value)._enum(rule.enum)) {
+                        _error = this._buildError(rule, `Trường này phải nằm trong ${rule.enum.toString()}`, prop)
+                    }
+                } else if (rule._regex) {
+                    /**
+                     * Kiểm tra định dạng
+                     * Email của thực chất là 1 kiểu định dạng
+                     * Regular Expression: https://viblo.asia/p/regular-expression-nhung-khai-niem-co-ban-jvEla4BoZkw
+                     */
+                    if (!this._validator(_value)._regex(rule._regex)) {
+                        _error = this._buildError(rule, `Trường ${prop} không đúng định dạng`, prop)
+                    }
+                } else if (rule.min) {
+                    if (!this._validator(_value)._min(rule.min)) {
+                        _error = this._buildError(rule, `Trường ${prop} phải lớn hơn ${rule.min}`, prop)
+                    }
+                } else if (rule.max) {
+                    if (!this._validator(_value)._max(rule.max)) {
+                        _error = this._buildError(rule, `Trường ${prop} phải nhỏ hơn ${rule.max}`, prop)
+                    }
+                } else if (rule.type) {
+                    if (!this._validator(_value)._type(rule.type)) {
+                        _error = this._buildError(rule, `Trường ${prop} cần phải là ${rule.type}`, prop)
+                    }
                 }
             }
             return _error
@@ -364,22 +370,22 @@ class Validator {
      * Gắn các event vào DOM
      * @param prop
      * @param selector
-     * @param trigger
+     * @param { { trigger: String, index: Number } } rule
      * @param callback
      * @private
      * onchange, focus, blur, keyup,....
      * addEventListener thêm lắng kiện vào DOM param của nó đầu tiên là tên sự kiện, 2 callback,...
      */
-    _addListener(prop, selector, trigger, callback) {
+    _addListener(prop, selector, {trigger, index}, callback) {
         selector.addEventListener(trigger, ()=> {
             // call callback để lấy lỗi
             const error = callback()
             if (error) {
                 // show lỗi trên giao diện
-                this._errorUI(error)
+                this._errorUI(error, index)
             } else {
                 // xoá lỗi
-                this._clearErrorUI(prop)
+                this._clearErrorUI(prop, index)
             }
         })
     }
@@ -388,9 +394,10 @@ class Validator {
      * Show lỗi lên người dùng
      * Support custom qua this._error_ui
      * @param { { message: String, prop: String } } error
+     * @param { Number } index
      * @private
      */
-    _errorUI({message, prop}) {
+    _errorUI({message, prop}, index) {
         // call nếu có truyền vào 1 callback custom show lỗi
         if (this._error_ui) {
             this._error_ui(this.form, prop, message)()
@@ -398,7 +405,7 @@ class Validator {
             // tìm form-item chưa field data hiện tại
             const _parent = this.form.querySelector(`[prop=${prop}]`)
             // tìm element hiển thị lỗi
-            let _errorNode = _parent.querySelector('.form-message')
+            let _errorNode = _parent.querySelector(`.form-message[rule-index="${index}"]`)
             if (!_errorNode) {
                 /**
                  * Tạo nếu chưa có element hiển thị lỗi
@@ -411,10 +418,9 @@ class Validator {
                  */
                 _errorNode = document.createElement('span')
                 _errorNode.classList.add('form-message')
+                _errorNode.setAttribute('rule-index', index.toString())
                 _errorNode.textContent = message
                 _parent.append(_errorNode)
-            } else {
-                _errorNode.textContent = message
             }
         _parent.classList.add('invalid')
         }
@@ -424,10 +430,11 @@ class Validator {
      * Xoá giao diện lỗi nếu có
      * Check nếu custom _clear_ui sẽ gọi _clear_ui() thay thế
      * @param { String } prop
+     * @param { Number } index
      * @returns {*}
      * @private
      */
-    _clearErrorUI(prop) {
+    _clearErrorUI(prop, index) {
         if (this._clear_ui) {
             return this._clear_ui(this.form, prop)()
         }
@@ -436,9 +443,11 @@ class Validator {
         // check parent đã từng bị lỗi hay chưa bằng cách check class
         if (_parent.classList.contains('invalid')) {
             // xoá element
-            _parent.querySelector('.form-message').remove()
+            _parent.querySelector(`.form-message[rule-index="${index}"]`)?.remove()
             // xoá class invalid
-            _parent.classList.remove('invalid')
+            if (!_parent.querySelectorAll(`.form-message`).length) {
+                _parent.classList.remove('invalid')
+            }
         }
     }
 }

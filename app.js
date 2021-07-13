@@ -26,11 +26,17 @@ const rules = {
             trigger: 'blur'
         },
         {
-            max: 20,
-            message: 'Tên quá dài'
+            min: 3,
+            message: 'Tên quá ngắn',
+            trigger: 'blur'
         }
     ],
     email: [
+        {
+            required: true,
+            message: 'Email không được để trống',
+            trigger: 'blur'
+        },
         {
             type: 'email',
             message: 'Email không hợp lệ',
@@ -45,6 +51,11 @@ const rules = {
         }
     ],
     repassword: [
+        {
+            required: true,
+            message: 'Mật khẩu lại không được để trống',
+            trigger: 'blur'
+        },
         {
             trigger: 'blur',
             message: 'Mật khẩu nhập lại không chính xác',
