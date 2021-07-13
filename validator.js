@@ -11,6 +11,8 @@ class Validator {
      * @param rules
      * Rules phải là 1 object chứa các mảng rule theo giá trị prop, key: prop
      * Selector của form
+     * error_ui phải là 1 function: custom thông báo lỗi
+     * clear_ui phải là 1 funtion: custom xoá thông báo lỗi
      * @param selector
      * @param error_ui?
      * @param clear_ui?
@@ -73,9 +75,9 @@ class Validator {
                          *  Yêu cầu trả về một giá trị đúng sai
                          */
                         if (rule.validate) {
-                            this._addListener(prop, _selector_data, rule.trigger, rule.validate(prop, _selector_data, rule))
+                            this._addListener(prop, _selector_data, rule.trigger, this._runCustomValidate(rule.validate, _selector_data, rule, prop))
                         } else {
-                            // validate của class
+                            // nếu ko có custom validate
                             // Dựng callback cho rule
                             const callback = this._buildCallback(prop, _selector_data, rule)
                             this._addListener(prop, _selector_data, rule.trigger, callback)
@@ -88,6 +90,7 @@ class Validator {
 
     /**
      * Check roàn bộ form
+     * Trả về một mảng có chứa các lỗi
      */
     validate() {
         /**
@@ -105,13 +108,14 @@ class Validator {
                 continue
             }
             /**
-             * Tìm và gắn và rule có trigger
              * forEach(value, index, array) là api của Array
+             * Xử lý với toàn bộ rule
              */
             rules.forEach((rule) => {
                 // validate feild data chứa attr valid-data
                 const _selector_data = field.querySelector('[valid-data]')
                 if (!_selector_data) {
+                    // feild không tồn tại
                     console.warn('Field data không xác định')
                 } else {
                     /**
@@ -123,9 +127,10 @@ class Validator {
                      *  Yêu cầu trả về một giá trị đúng sai
                      */
                     if (rule.validate) {
-                        const check = rule.validate()
-                        if (!check) {
-                            _errors.push(this._buildError(rule, `Trường không hợp lệ`, prop))
+                        const _error = this._runCustomValidate(rule.validate, _selector_data, rule, prop)()
+                        if (_error) {
+                            _errors.push(_error)
+                            this._errorUI(_error)
                         }
                     } else {
                         const _error = this._buildCallback(prop, _selector_data, rule)()
@@ -133,6 +138,14 @@ class Validator {
                             _errors.push(_error)
                             this._errorUI(_error)
                         } else {
+                            /**
+                             * Kiểm tra xem đã có ở field đó hay chứ...VD: password có 2 lỗi
+                             * vì _errors là một mảng lên có thể sử dụng Array.findIndex:
+                             * Tìm index của element đầu tiên thoả mãn điều kiện
+                             * Vì index của mảng bắt đầu từ 0 nên nếu ko thoả mãn index sẽ = -1
+                             * @type {boolean}
+                             * @private
+                             */
                             const _has_error = _errors.findIndex(value => value.prop === prop) > -1
                             if (!_has_error) {
                                 this._clearErrorUI(prop)
@@ -143,6 +156,25 @@ class Validator {
             })
         }
         return _errors
+    }
+
+    /**
+     * Chạy custom validate tại đây
+     * Nếu custom validate trả về đúng tức là dữ liệu sẽ trả bề void
+     * Nếu sai sẽ trả về 1 lỗi theo đúng format
+     * @param callback
+     * @param selector
+     * @param rule
+     * @param prop
+     * @returns {(function(): ({prop, message: string}|undefined))|*}
+     * @private
+     */
+    _runCustomValidate(callback, selector, rule, prop) {
+        return () => {
+            if (!callback(this.form, selector, rule )()) {
+                return this._buildError(rule, `Trường ${prop} không hợp lệ`, prop)
+            }
+        }
     }
 
     /**
@@ -229,6 +261,7 @@ class Validator {
      * @private
      */
     _getInputValue(selector) {
+        // tạo biến để hứng giá trị value
         let _value = ''
         // kiểm tra input type
         const type = selector.getAttribute('type')
@@ -288,8 +321,16 @@ class Validator {
             _enum: (list) => {
                 return list.includes(value)
             },
+            /**
+             * cái regex này là dùng để test định dạng của dữ liệu
+             * Regular Expression
+             * Link: https://viblo.asia/p/regular-expression-nhung-khai-niem-co-ban-jvEla4BoZkw
+             * @param pattern
+             * @returns {boolean}
+             * @private
+             */
             _regex: (pattern) => {
-                return !value.match(pattern)
+                return new RegExp(pattern).test(value)
             },
             /**
              * Với kiểu min và max
@@ -307,8 +348,14 @@ class Validator {
             _max: (max) => {
                 return Number(value) ? Number(value) < max : value.length < max
             },
+            /**
+             * Kiểu dữ liệu cần validate
+             * @param type
+             * @returns {*|boolean}
+             * @private
+             */
             _type: (type) => {
-                return type === 'email' ? this._validator(value)._regex('/^\\w+([\\.-]?\\w+)*@\\w+([\\.-]?\\w+)*(\\.\\w{2,3})+$/') : typeof value === type
+                return type === 'email' ? this._validator(value)._regex('^[\\w-\\/.]+@([\\w-]+\\.)+[\\w-]{2,4}$') : typeof value === type
             }
         }
     }
@@ -321,13 +368,17 @@ class Validator {
      * @param callback
      * @private
      * onchange, focus, blur, keyup,....
+     * addEventListener thêm lắng kiện vào DOM param của nó đầu tiên là tên sự kiện, 2 callback,...
      */
     _addListener(prop, selector, trigger, callback) {
         selector.addEventListener(trigger, ()=> {
+            // call callback để lấy lỗi
             const error = callback()
             if (error) {
+                // show lỗi trên giao diện
                 this._errorUI(error)
             } else {
+                // xoá lỗi
                 this._clearErrorUI(prop)
             }
         })
@@ -340,10 +391,11 @@ class Validator {
      * @private
      */
     _errorUI({message, prop}) {
+        // call nếu có truyền vào 1 callback custom show lỗi
         if (this._error_ui) {
-            this._error_ui(this.form, prop, message)
+            this._error_ui(this.form, prop, message)()
         } else {
-            // tìm form-item
+            // tìm form-item chưa field data hiện tại
             const _parent = this.form.querySelector(`[prop=${prop}]`)
             // tìm element hiển thị lỗi
             let _errorNode = _parent.querySelector('.form-message')
@@ -377,8 +429,9 @@ class Validator {
      */
     _clearErrorUI(prop) {
         if (this._clear_ui) {
-            return this._clear_ui(this.form, prop)
+            return this._clear_ui(this.form, prop)()
         }
+        // tim form-item chứa nó
         const _parent = this.form.querySelector(`[prop=${prop}]`)
         // check parent đã từng bị lỗi hay chưa bằng cách check class
         if (_parent.classList.contains('invalid')) {
