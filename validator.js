@@ -192,7 +192,20 @@ class Validator {
             // trả về thẻ tag của field
             // div, input, checkbox,.....
             const _tag = selector.localName
-            let _value = _tag === 'input' ? this._getInputValue(selector) : selector.value
+            let _value = null
+            switch (_tag) {
+                case 'input':
+                    _value = this._getInputValue(selector)
+                    break
+                case 'select':
+                    if (selector.querySelectorAll('option').length) {
+                        _value = selector.options[selector.selectedIndex].value
+                    }
+                    break
+                default:
+                    _value = selector.value
+
+            }
             /**
              * Bắt đầu check rule từ đâu
              * sẽ check từng yêu cầu, nếu mà có lỗi bỏ qua các lỗi còn lại...
@@ -272,7 +285,7 @@ class Validator {
         // kiểm tra input type
         const type = selector.getAttribute('type')
         // mảng input
-        if (['select', 'radio'].includes(type)) {
+        if (['radio', 'checkbox'].includes(type)) {
             /**
              * di chuyển lên parent sau đó query input:checked
              * dịch chuyển lên field-item
@@ -281,7 +294,7 @@ class Validator {
              * nến nó sẽ trả về field chứa nó
              */
             const parent = selector.closest('[prop]')
-            if (type === 'select') {
+            if (type === 'checkbox') {
                 /**
                  * nếu type=select
                  * Khởi tạo một biến _value là một mảng vì <input type="checkbox" value="*" /> trả về mảng [value]
