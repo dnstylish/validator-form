@@ -43,6 +43,13 @@ const rules = {
             trigger: 'blur'
         }
     ],
+    sex: [
+        {
+            enum: ['1', '2'],
+            message: 'Giới tính phải là nam hoặc nữ',
+            trigger: 'blur'
+        }
+    ],
     password: [
         {
             required: true,
